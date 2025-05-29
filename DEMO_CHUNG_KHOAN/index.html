@@ -1,0 +1,990 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>StockPro Exchange - Professional Trading Platform</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+    
+</head>
+<body>
+    <!-- Header -->
+    <header class="header">
+        <div class="header-content">
+            <div class="logo">
+                <div class="logo-icon">SP</div>
+                <div class="logo-text">StockPro Exchange</div>
+            </div>
+            
+            <div class="market-status">
+                <div class="status-dot"></div>
+                <span>Market Open</span>
+                <div class="market-time" id="marketTime">--:--:--</div>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Container -->
+    <div class="main-container">
+        <!-- Left Panel -->
+        <div class="left-panel">
+            <!-- Market Overview -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Market Overview</h2>
+                    <div id="lastUpdate" class="text-muted">Updating...</div>
+                </div>
+                <div class="card-body">
+                    <div class="market-overview" id="marketOverview">
+                        <div class="loading">
+                            <div class="spinner"></div>
+                            Loading market data...
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Stock Price Table -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Live Stock Prices</h2>
+                    <button onclick="refreshStocks()" class="chart-btn">Refresh</button>
+                </div>
+                <div class="search-container">
+                    <input type="text" class="search-input" id="stockSearch" placeholder="Search stocks (e.g., AAPL, GOOGL, TSLA)">
+                </div>
+                <div class="card-body">
+                    <table class="stock-table">
+                        <thead>
+                            <tr>
+                                <th>Symbol</th>
+                                <th>Price</th>
+                                <th>Change</th>
+                                <th>% Change</th>
+                                <th>Volume</th>
+                                <th>Market Cap</th>
+                            </tr>
+                        </thead>
+                        <tbody id="stockTableBody">
+                            <tr>
+                                <td colspan="6">
+                                    <div class="loading">
+                                        <div class="spinner"></div>
+                                        Loading stock data...
+                                    </div>
+                                </td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Price Chart -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Price Chart - <span id="selectedStock">AAPL</span></h2>
+                    <div class="chart-controls">
+                        <button class="chart-btn active" data-period="1D">1D</button>
+                        <button class="chart-btn" data-period="5D">5D</button>
+                        <button class="chart-btn" data-period="1M">1M</button>
+                        <button class="chart-btn" data-period="3M">3M</button>
+                        <button class="chart-btn" data-period="1Y">1Y</button>
+                    </div>
+                </div>
+                <div class="card-body">
+                    <div class="chart-wrapper">
+                        <canvas id="priceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Right Panel -->
+        <div class="right-panel">
+            <!-- Trending Stocks -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Trending Today</h2>
+                    <span class="badge hot">Hot</span>
+                </div>
+                <div class="card-body" id="trendingStocks">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading trending...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Market News -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Market News</h2>
+                    <span class="badge new">Live</span>
+                </div>
+                <div class="card-body" id="marketNews">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading news...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Gainers -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Top Gainers</h2>
+                </div>
+                <div class="card-body" id="topGainers">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading gainers...
+                    </div>
+                </div>
+            </div>
+
+            <!-- Top Losers -->
+            <div class="card">
+                <div class="card-header">
+                    <h2 class="card-title">Top Losers</h2>
+                </div>
+                <div class="card-body" id="topLosers">
+                    <div class="loading">
+                        <div class="spinner"></div>
+                        Loading losers...
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Notification -->
+    <div class="notification" id="notification">
+        <div id="notificationMessage"></div>
+    </div>
+
+  
+
+<script>
+    // API Configuration
+    const API_CONFIG = {
+        // Alpha Vantage API (Free tier: 5 API requests per minute, 500 requests per day)
+        ALPHA_VANTAGE: {
+            key: 'RUTEQOISH3G2PU6O', // THAY THẾ BẰNG KEY CỦA BẠN
+            baseUrl: 'https://www.alphavantage.co/query'
+        },
+        // Finnhub API (Free tier: 60 API calls/minute)
+        FINNHUB: {
+            key: 'd0s7f99r01qkkpltf6n0d0s7f99r01qkkpltf6ng', // THAY THẾ BẰNG KEY CỦA BẠN
+            baseUrl: 'https://finnhub.io/api/v1'
+        },
+       
+    };
+
+    // Application State
+    const AppState = {
+        selectedStock: 'AAPL',
+        watchlist: ['AAPL', 'GOOGL', 'MSFT', 'TSLA', 'AMZN', 'META', 'NVDA', 'AMD', 'NFLX', 'DIS'],
+        // stocks: new Map(), // Map có thể không cần thiết nếu bạn chỉ hiển thị danh sách
+        chart: null,
+        lastUpdate: null,
+        isLoading: false
+    };
+
+    // Sample Data for Demo (when API limits are reached or keys are not set)
+    const SAMPLE_DATA = {
+        marketOverview: [
+            { symbol: 'S&P 500', value: '4,189.43', change: '+12.45', changePercent: '+0.30%' },
+            { symbol: 'NASDAQ', value: '12,935.56', change: '+45.67', changePercent: '+0.35%' },
+            { symbol: 'DOW JONES', value: '33,875.40', change: '-23.12', changePercent: '-0.07%' },
+            { symbol: 'RUSSELL 2000', value: '1,887.23', change: '+8.91', changePercent: '+0.47%' }
+        ],
+        stocks: {
+            'AAPL': { name: 'Apple Inc.', price: 189.43, change: 2.45, changePercent: 1.31, volume: '52.4M', marketCap: '2.94T' },
+            'GOOGL': { name: 'Alphabet Inc.', price: 138.21, change: -1.87, changePercent: -1.33, volume: '28.7M', marketCap: '1.74T' },
+            'MSFT': { name: 'Microsoft Corp.', price: 348.10, change: 5.23, changePercent: 1.53, volume: '25.3M', marketCap: '2.58T' },
+            'TSLA': { name: 'Tesla Inc.', price: 207.52, change: -3.18, changePercent: -1.51, volume: '67.8M', marketCap: '659.2B' },
+            'AMZN': { name: 'Amazon.com Inc.', price: 131.56, change: 0.89, changePercent: 0.68, volume: '34.2M', marketCap: '1.36T' },
+            'META': { name: 'Meta Platforms', price: 298.58, change: 4.72, changePercent: 1.61, volume: '18.9M', marketCap: '778.5B' },
+            'NVDA': { name: 'NVIDIA Corp.', price: 891.14, change: 15.67, changePercent: 1.79, volume: '42.1M', marketCap: '2.21T' },
+            'AMD': { name: 'Advanced Micro Devices', price: 134.67, change: -2.33, changePercent: -1.70, volume: '35.6M', marketCap: '217.3B' },
+            'NFLX': { name: 'Netflix Inc.', price: 456.78, change: 8.94, changePercent: 2.00, volume: '12.4M', marketCap: '203.7B' },
+            'DIS': { name: 'The Walt Disney Company', price: 87.45, change: -1.23, changePercent: -1.39, volume: '15.8M', marketCap: '159.8B' }
+        },
+        news: [
+            { title: 'Fed Signals Potential Rate Cuts as Inflation Shows Signs of Cooling', time: '2 hours ago', source: 'Reuters' },
+            { title: 'Tech Stocks Rally on Strong Earnings from Major Players', time: '4 hours ago', source: 'Bloomberg' },
+            { title: 'Energy Sector Sees Volatility Amid Geopolitical Tensions', time: '6 hours ago', source: 'CNBC' },
+            { title: 'Cryptocurrency Market Shows Mixed Signals After Regulatory News', time: '8 hours ago', source: 'CoinDesk' }
+        ]
+    };
+
+    // Initialize Application
+    document.addEventListener('DOMContentLoaded', function() {
+        initializeApp();
+        updateMarketTime();
+        setInterval(updateMarketTime, 1000);
+        // Cân nhắc giảm tần suất cập nhật nếu dùng API miễn phí
+        setInterval(updateAllData, 60000 * 2); // Cập nhật mỗi 2 phút
+    });
+
+    async function updateAllData() {
+        showNotification('Refreshing market data...', 'info', 2000);
+        await loadMarketOverview(); // Tải riêng để tránh lỗi 1 cái ảnh hưởng tất cả
+        await loadStockData();
+        // Các hàm load khác nếu cần cập nhật định kỳ
+        // await loadTrendingStocks();
+        // await loadMarketNews();
+        // await loadTopGainers();
+        // await loadTopLosers();
+    }
+
+
+    async function initializeApp() {
+        try {
+            showNotification('Welcome to StockPro Exchange!', 'success');
+            await Promise.all([
+                loadMarketOverview(),
+                loadStockData(),
+                loadTrendingStocks(), // Sẽ dùng sample data nếu chưa có API
+                loadMarketNews(),     // Sẽ dùng sample data nếu chưa có API
+                loadTopGainers(),   // Sẽ dùng sample data nếu chưa có API
+                loadTopLosers()     // Sẽ dùng sample data nếu chưa có API
+            ]);
+            initializeChart(); // Khởi tạo biểu đồ với dữ liệu mặc định hoặc sample
+            setupEventListeners();
+        } catch (error) {
+            console.error('Failed to initialize app:', error);
+            showNotification('Failed to load initial market data. Displaying demo data.', 'error');
+            loadSampleDataFallback(); // Hàm riêng để tải tất cả sample data nếu Promise.all thất bại
+        }
+    }
+    
+    function loadSampleDataFallback() {
+        displayMarketOverview(SAMPLE_DATA.marketOverview);
+        const stocks = AppState.watchlist.map(symbol => ({
+            symbol,
+            ...SAMPLE_DATA.stocks[symbol]
+        })).filter(stock => stock.name);
+        displayStockTable(stocks);
+        displayTrendingStocks(AppState.watchlist.slice(0, 5).map(s => SAMPLE_DATA.stocks[s])); // Sample trending
+        displayMarketNews(SAMPLE_DATA.news);
+        displayTopGainersLosers(SAMPLE_DATA.stocks, true); // Sample gainers
+        displayTopGainersLosers(SAMPLE_DATA.stocks, false); // Sample losers
+        initializeChart(); // Cố gắng khởi tạo biểu đồ ngay cả khi dùng sample
+    }
+
+
+    function setupEventListeners() {
+        // Search functionality
+        const searchInput = document.getElementById('stockSearch');
+        searchInput.addEventListener('input', debounce(handleStockSearch, 300));
+        searchInput.addEventListener('keypress', function(event) {
+            if (event.key === 'Enter') {
+                const symbol = searchInput.value.trim().toUpperCase();
+                if (symbol && !AppState.watchlist.includes(symbol)) {
+                    AppState.watchlist.unshift(symbol); // Thêm vào đầu danh sách
+                    if (AppState.watchlist.length > 15) AppState.watchlist.pop(); // Giữ danh sách không quá dài
+                    loadStockData(); // Tải lại bảng
+                    loadChartData(symbol, document.querySelector('.chart-btn[data-period].active')?.dataset.period || '1D'); // Tải biểu đồ cho mã mới
+                    searchInput.value = ''; // Xóa input
+                    showNotification(`${symbol} added to watchlist.`, 'success');
+                } else if (symbol) {
+                     showNotification(`${symbol} is already in the watchlist or invalid.`, 'info');
+                }
+            }
+        });
+
+
+        // Chart period buttons
+        document.querySelectorAll('.chart-btn[data-period]').forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                document.querySelectorAll('.chart-btn[data-period]').forEach(b => b.classList.remove('active'));
+                e.target.classList.add('active');
+                loadChartData(AppState.selectedStock, e.target.dataset.period);
+            });
+        });
+
+        // Click on stock row to update chart
+         document.getElementById('stockTableBody').addEventListener('click', (event) => {
+            const row = event.target.closest('tr');
+            if (row && row.dataset.symbol) {
+                const symbol = row.dataset.symbol;
+                AppState.selectedStock = symbol;
+                document.getElementById('selectedStock').textContent = symbol;
+                const activePeriodButton = document.querySelector('.chart-btn[data-period].active');
+                const period = activePeriodButton ? activePeriodButton.dataset.period : '1D';
+                loadChartData(symbol, period);
+                showNotification(`Chart updated for ${symbol}`, 'info', 2000);
+            }
+        });
+    }
+    
+    // Debounce function
+    function debounce(func, delay) {
+        let timeout;
+        return function(...args) {
+            clearTimeout(timeout);
+            timeout = setTimeout(() => func.apply(this, args), delay);
+        };
+    }
+
+    function handleStockSearch(event) {
+        const searchTerm = event.target.value.toLowerCase();
+        const rows = document.querySelectorAll('#stockTableBody tr');
+        rows.forEach(row => {
+            const symbol = row.dataset.symbol ? row.dataset.symbol.toLowerCase() : '';
+            const name = row.querySelector('.company-name') ? row.querySelector('.company-name').textContent.toLowerCase() : '';
+            if (symbol.includes(searchTerm) || name.includes(searchTerm)) {
+                row.style.display = '';
+            } else {
+                row.style.display = 'none';
+            }
+        });
+    }
+    
+    async function loadMarketOverview() {
+        const overviewContainer = document.getElementById('marketOverview');
+        overviewContainer.innerHTML = `<div class="loading"><div class="spinner"></div>Loading market overview...</div>`;
+        try {
+            // Các mã ETF đại diện cho chỉ số chính (ví dụ)
+            // Alpha Vantage có thể không có dữ liệu tốt cho tất cả các chỉ số dưới dạng ETF đơn lẻ một cách trực tiếp.
+            // Bạn có thể cần tìm các symbol phù hợp hoặc API khác chuyên về chỉ số.
+            // Giả sử dùng Finnhub cho việc này vì nó có thể có dữ liệu chỉ số tốt hơn.
+            const indicesData = [ // Symbol, Tên hiển thị
+                { symbol: '^GSPC', name: 'S&P 500' }, // Yahoo Finance symbol for S&P 500
+                { symbol: '^IXIC', name: 'NASDAQ' }, // Yahoo Finance symbol for NASDAQ
+                { symbol: '^DJI', name: 'DOW JONES' }  // Yahoo Finance symbol for Dow Jones
+                // Russell 2000: ^RUT
+            ];
+
+            // Nếu dùng AlphaVantage, bạn có thể thử với các ETF như SPY, QQQ, DIA
+            // const indicesAV = ['SPY', 'QQQ', 'DIA'];
+            // const promisesAV = indicesAV.map(symbol => fetchStockQuote(symbol));
+            // const resultsAV = await Promise.all(promisesAV);
+            // const marketDataAV = resultsAV.map((data, index) => { ... });
+
+            // Sử dụng SAMPLE_DATA nếu API không cung cấp đủ hoặc có lỗi
+            displayMarketOverview(SAMPLE_DATA.marketOverview);
+            document.getElementById('lastUpdate').textContent = `Last updated: ${new Date().toLocaleTimeString()}`;
+
+        } catch (error) {
+            console.error('Failed to load market overview:', error);
+            displayMarketOverview(SAMPLE_DATA.marketOverview); // Fallback
+        }
+    }
+
+    async function loadStockData() {
+        const tableBody = document.getElementById('stockTableBody');
+        tableBody.innerHTML = `<tr><td colspan="6"><div class="loading"><div class="spinner"></div>Loading stock data...</div></td></tr>`;
+        
+        try {
+            const stockPromises = AppState.watchlist.map(symbol => 
+                fetchStockQuote(symbol).catch(err => {
+                    console.warn(`Failed to fetch ${symbol}, using sample. Error: ${err}`);
+                    return { symbol, ...SAMPLE_DATA.stocks[symbol], isSample: true }; // Trả về sample data nếu lỗi
+                })
+            );
+            
+            const results = await Promise.all(stockPromises);
+            const stocks = [];
+
+            results.forEach((data, index) => {
+                const symbol = AppState.watchlist[index];
+                if (data && (data.price || data.isSample)) { // Nếu có giá hoặc là dữ liệu mẫu
+                    stocks.push({
+                        symbol: data.symbol || symbol,
+                        name: data.name || (SAMPLE_DATA.stocks[symbol] ? SAMPLE_DATA.stocks[symbol].name : `${symbol} Corp.`),
+                        price: data.price || (SAMPLE_DATA.stocks[symbol] ? SAMPLE_DATA.stocks[symbol].price : 0),
+                        change: data.change || (SAMPLE_DATA.stocks[symbol] ? SAMPLE_DATA.stocks[symbol].change : 0),
+                        changePercent: data.changePercent || (SAMPLE_DATA.stocks[symbol] ? SAMPLE_DATA.stocks[symbol].changePercent : 0),
+                        volume: data.volume || (SAMPLE_DATA.stocks[symbol] ? SAMPLE_DATA.stocks[symbol].volume : '0'),
+                        marketCap: data.marketCap || (SAMPLE_DATA.stocks[symbol] ? SAMPLE_DATA.stocks[symbol].marketCap : 'N/A')
+                    });
+                } else {
+                    // Nếu API không trả về gì và cũng không có trong sample data (trường hợp mã lạ)
+                    console.warn(`No data available for ${symbol}, even from samples.`);
+                    const sampleStock = SAMPLE_DATA.stocks[symbol] || { name: `${symbol} Not Found`, price: 0, change: 0, changePercent: 0, volume: 'N/A', marketCap: 'N/A' };
+                    stocks.push({ symbol, ...sampleStock });
+                }
+            });
+
+            displayStockTable(stocks);
+            AppState.lastUpdate = new Date();
+            const lastUpdateEl = document.getElementById('lastUpdate');
+            if (lastUpdateEl) {
+                lastUpdateEl.textContent = `Stock data updated: ${AppState.lastUpdate.toLocaleTimeString()}`;
+            }
+            
+        } catch (error) {
+            console.error('Error in loadStockData pipeline:', error);
+            const stocks = AppState.watchlist.map(symbol => ({
+                symbol,
+                ...(SAMPLE_DATA.stocks[symbol] || { name: `${symbol} Error`, price: 0, change: 0, changePercent: 0, volume: 'N/A', marketCap: 'N/A' })
+            }));
+            displayStockTable(stocks);
+        }
+    }
+    
+    // ==========================================================================================
+    // PHẦN HOÀN THIỆN CHO fetchStockQuote VÀ CÁC HÀM HELPER
+    // ==========================================================================================
+
+    async function fetchStockQuote(symbol) {
+        // Ưu tiên 1: Alpha Vantage
+        if (API_CONFIG.ALPHA_VANTAGE.key && API_CONFIG.ALPHA_VANTAGE.key !== 'YOUR_ALPHA_VANTAGE_API_KEY' && API_CONFIG.ALPHA_VANTAGE.key !== 'demo') {
+            try {
+                const alphaQuoteResponse = await fetch(
+                    `${API_CONFIG.ALPHA_VANTAGE.baseUrl}?function=GLOBAL_QUOTE&symbol=${symbol}&apikey=${API_CONFIG.ALPHA_VANTAGE.key}`
+                );
+                if (alphaQuoteResponse.ok) {
+                    const quoteData = await alphaQuoteResponse.json();
+                    const quote = quoteData['Global Quote'];
+                    if (quote && Object.keys(quote).length > 0 && quote['05. price']) {
+                        let companyName = `${symbol}`; // Mặc định
+                        let marketCapValue = 'N/A';
+
+                        // Thử lấy thêm thông tin tổng quan (tên, vốn hóa) - CẨN THẬN GIỚI HẠN API!
+                        try {
+                            const overviewResponse = await fetch(
+                                `${API_CONFIG.ALPHA_VANTAGE.baseUrl}?function=OVERVIEW&symbol=${symbol}&apikey=${API_CONFIG.ALPHA_VANTAGE.key}`
+                            );
+                            if (overviewResponse.ok) {
+                                const overviewData = await overviewResponse.json();
+                                if (overviewData && overviewData.Name) companyName = overviewData.Name;
+                                if (overviewData && overviewData.MarketCapitalization && overviewData.MarketCapitalization !== "None") {
+                                    marketCapValue = formatMarketCap(parseFloat(overviewData.MarketCapitalization));
+                                }
+                            }
+                        } catch (overviewError) {
+                            console.warn(`Alpha Vantage Overview for ${symbol} failed: ${overviewError.message}`);
+                        }
+                        
+                        console.log(`Data from Alpha Vantage for ${symbol}:`, quote);
+                        return {
+                            symbol: quote['01. symbol'] || symbol,
+                            name: companyName,
+                            price: parseFloat(quote['05. price']),
+                            change: parseFloat(quote['09. change']),
+                            changePercent: parseFloat(quote['10. change percent']?.replace('%', '')),
+                            volume: formatVolume(quote['06. volume']),
+                            marketCap: marketCapValue,
+                            dataSource: 'Alpha Vantage'
+                        };
+                    } else if (quoteData['Note']) {
+                        console.warn(`Alpha Vantage API limit likely reached for ${symbol}: ${quoteData['Note']}`);
+                        // Sẽ thử API tiếp theo
+                    } else if (quoteData['Error Message']) {
+                         console.warn(`Alpha Vantage error for ${symbol}: ${quoteData['Error Message']}`);
+                    }
+                } else {
+                    console.warn(`Alpha Vantage request for ${symbol} failed with status: ${alphaQuoteResponse.status}`);
+                }
+            } catch (error) {
+                console.error(`Error fetching from Alpha Vantage for ${symbol}:`, error);
+            }
+        } else if (API_CONFIG.ALPHA_VANTAGE.key === 'YOUR_ALPHA_VANTAGE_API_KEY' || API_CONFIG.ALPHA_VANTAGE.key === 'demo') {
+            console.warn("Alpha Vantage API key is a placeholder or 'demo'. Skipping Alpha Vantage call.");
+        }
+
+        // Ưu tiên 2: Finnhub (nếu Alpha Vantage thất bại hoặc không được cấu hình)
+        if (API_CONFIG.FINNHUB.key && API_CONFIG.FINNHUB.key !== 'YOUR_FINNHUB_API_KEY' && API_CONFIG.FINNHUB.key !== 'demo') {
+            try {
+                const finnhubQuoteResponse = await fetch(
+                    `${API_CONFIG.FINNHUB.baseUrl}/quote?symbol=${symbol}&token=${API_CONFIG.FINNHUB.key}`
+                );
+                if (finnhubQuoteResponse.ok) {
+                    const quoteData = await finnhubQuoteResponse.json();
+                    if (quoteData && typeof quoteData.c !== 'undefined' && quoteData.c !== 0) { // c = current price
+                        let companyName = `${symbol}`;
+                        let marketCapValue = 'N/A';
+                        // Finnhub /quote không có volume, /stock/profile2 có thể có market cap và name
+                        try {
+                             const profileResponse = await fetch(
+                                `${API_CONFIG.FINNHUB.baseUrl}/stock/profile2?symbol=${symbol}&token=${API_CONFIG.FINNHUB.key}`
+                            );
+                            if (profileResponse.ok) {
+                                const profileData = await profileResponse.json();
+                                if (profileData && profileData.name) companyName = profileData.name;
+                                if (profileData && profileData.marketCapitalization) {
+                                     marketCapValue = formatMarketCap(parseFloat(profileData.marketCapitalization) * 1000000); // Finnhub marketCap is in millions
+                                }
+                            }
+                        } catch (profileError) {
+                            console.warn(`Finnhub Profile for ${symbol} failed: ${profileError.message}`);
+                        }
+                        console.log(`Data from Finnhub for ${symbol}:`, quoteData);
+                        return {
+                            symbol: symbol,
+                            name: companyName,
+                            price: parseFloat(quoteData.c),       // Current price
+                            change: parseFloat(quoteData.d) || 0,   // Change
+                            changePercent: parseFloat(quoteData.dp) || 0, // Percent change
+                            volume: 'N/A', // Finnhub /quote doesn't have volume, needs different endpoint or processing
+                            marketCap: marketCapValue,
+                            dataSource: 'Finnhub'
+                        };
+                    } else {
+                         console.warn(`Finnhub response for ${symbol} did not contain valid price data (c=${quoteData.c}).`);
+                    }
+                } else {
+                    console.warn(`Finnhub request for ${symbol} failed with status: ${finnhubQuoteResponse.status}`);
+                }
+            } catch (error) {
+                console.error(`Error fetching from Finnhub for ${symbol}:`, error);
+            }
+        } else if (API_CONFIG.FINNHUB.key === 'YOUR_FINNHUB_API_KEY' || API_CONFIG.FINNHUB.key === 'demo') {
+             console.warn("Finnhub API key is a placeholder or 'demo'. Skipping Finnhub call.");
+        }
+        
+        // Nếu tất cả API đều thất bại hoặc không được cấu hình đúng cách
+        console.warn(`Could not fetch quote for ${symbol} from any API. Returning null or sample.`);
+        return null; // Sẽ được xử lý bởi .catch trong loadStockData để dùng sample
+    }
+
+    // Helper Functions (Định dạng dữ liệu)
+    function formatPrice(price) {
+        if (price === null || typeof price === 'undefined' || isNaN(price)) return 'N/A';
+        return '$' + Number(price).toFixed(2);
+    }
+
+    function formatChange(change) {
+        if (change === null || typeof change === 'undefined' || isNaN(change)) return 'N/A';
+        const numChange = Number(change);
+        return (numChange >= 0 ? '+' : '') + numChange.toFixed(2);
+    }
+
+    function formatPercent(percent) {
+        if (percent === null || typeof percent === 'undefined' || isNaN(percent)) return 'N/A';
+        const numPercent = Number(percent);
+        return numPercent.toFixed(2) + '%';
+    }
+    
+    function formatVolume(volume) {
+        if (volume === null || typeof volume === 'undefined' || isNaN(parseInt(volume))) return 'N/A';
+        const num = parseInt(volume);
+        if (num >= 1.0e+9) return (num / 1.0e+9).toFixed(2) + 'B';
+        if (num >= 1.0e+6) return (num / 1.0e+6).toFixed(2) + 'M';
+        if (num >= 1.0e+3) return (num / 1.0e+3).toFixed(1) + 'K';
+        return num.toString();
+    }
+
+    function formatMarketCap(num) {
+        if (num === null || typeof num === 'undefined' || isNaN(num) || num === 0) return 'N/A';
+        if (num >= 1.0e+12) return (num / 1.0e+12).toFixed(2) + 'T';
+        if (num >= 1.0e+9) return (num / 1.0e+9).toFixed(2) + 'B';
+        if (num >= 1.0e+6) return (num / 1.0e+6).toFixed(2) + 'M';
+        if (num >= 1.0e+3) return (num / 1.0e+3).toFixed(0) + 'K'; // Thường không hiển thị K cho vốn hóa
+        return num.toFixed(0);
+    }
+    // ==========================================================================================
+    // KẾT THÚC PHẦN HOÀN THIỆN
+    // ==========================================================================================
+
+    function displayMarketOverview(data) {
+        const overviewContainer = document.getElementById('marketOverview');
+        if (!data || data.length === 0) {
+            overviewContainer.innerHTML = '<p class="text-muted">Market overview data is unavailable.</p>';
+            return;
+        }
+        overviewContainer.innerHTML = data.map(index => `
+            <div class="index-card">
+                <div class="index-name">${index.symbol}</div>
+                <div class="index-value">${index.value}</div>
+                <div class="index-change ${parseFloat(index.change) >= 0 ? 'positive' : 'negative'}">
+                    ${index.change} (${index.changePercent})
+                </div>
+            </div>
+        `).join('');
+    }
+
+    function displayStockTable(stocks) {
+        const tableBody = document.getElementById('stockTableBody');
+        if (!stocks || stocks.length === 0) {
+            tableBody.innerHTML = '<tr><td colspan="6" class="text-muted">No stock data to display. Add symbols to watchlist.</td></tr>';
+            return;
+        }
+
+        tableBody.innerHTML = stocks.map(stock => {
+            const changeVal = parseFloat(stock.change);
+            const changeClass = changeVal >= 0 ? 'positive' : 'negative';
+            return `
+                <tr data-symbol="${stock.symbol}">
+                    <td>
+                        <div class="symbol">${stock.symbol}</div>
+                        <div class="company-name">${stock.name || 'N/A'}</div>
+                    </td>
+                    <td class="price">${formatPrice(stock.price)}</td>
+                    <td class="change ${changeClass}">${formatChange(stock.change)}</td>
+                    <td class="change ${changeClass}">${formatPercent(stock.changePercent)}</td>
+                    <td class="volume">${formatVolume(stock.volume)}</td>
+                    <td>${stock.marketCap || 'N/A'}</td>
+                </tr>
+            `;
+        }).join('');
+    }
+
+
+    async function loadTrendingStocks() { // Placeholder
+        const trendingContainer = document.getElementById('trendingStocks');
+        trendingContainer.innerHTML = ''; // Xóa loading
+        // Lấy 5 mã đầu tiên từ watchlist làm ví dụ trending, sử dụng sample data
+        const trending = AppState.watchlist.slice(0, 5).map(symbol => SAMPLE_DATA.stocks[symbol] ? {symbol, ...SAMPLE_DATA.stocks[symbol]} : null ).filter(s => s);
+        displayTrendingStocks(trending);
+    }
+    
+    function displayTrendingStocks(trendingData) {
+        const trendingContainer = document.getElementById('trendingStocks');
+        if (!trendingData || trendingData.length === 0) {
+            trendingContainer.innerHTML = '<div class="loading"><div class="spinner"></div>No trending data.</div>';
+            return;
+        }
+        trendingContainer.innerHTML = trendingData.map(stock => {
+             if (!stock) return ''; // Bỏ qua nếu stock không tồn tại trong sample
+            const changeClass = stock.changePercent >= 0 ? 'positive' : 'negative';
+            return `
+                <div class="trending-item" data-symbol="${stock.symbol}">
+                    <div class="trending-info">
+                        <div class="trending-symbol">${stock.symbol}</div>
+                        <div class="trending-name">${stock.name}</div>
+                    </div>
+                    <div class="trending-price">
+                        <div class="trending-value">${formatPrice(stock.price)}</div>
+                        <div class="trending-change ${changeClass}">${formatPercent(stock.changePercent)}</div>
+                    </div>
+                </div>
+            `
+        }).join('');
+        // Add event listeners for trending items to update chart
+        trendingContainer.querySelectorAll('.trending-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const symbol = item.dataset.symbol;
+                AppState.selectedStock = symbol;
+                document.getElementById('selectedStock').textContent = symbol;
+                const activePeriodButton = document.querySelector('.chart-btn[data-period].active');
+                const period = activePeriodButton ? activePeriodButton.dataset.period : '1D';
+                loadChartData(symbol, period);
+                showNotification(`Chart updated for ${symbol}`, 'info', 2000);
+
+            });
+        });
+    }
+
+
+    async function loadMarketNews() { // Placeholder
+        displayMarketNews(SAMPLE_DATA.news);
+    }
+    
+    function displayMarketNews(newsData) {
+        const newsContainer = document.getElementById('marketNews');
+         if (!newsData || newsData.length === 0) {
+            newsContainer.innerHTML = '<div class="loading"><div class="spinner"></div>No news available.</div>';
+            return;
+        }
+        newsContainer.innerHTML = newsData.map(item => `
+            <div class="news-item">
+                <div class="news-title">${item.title}</div>
+                <div class="news-meta">
+                    <span>${item.source}</span> • <span>${item.time}</span>
+                </div>
+            </div>
+        `).join('');
+    }
+
+    async function loadTopGainers() { // Placeholder
+        displayTopGainersLosers(SAMPLE_DATA.stocks, true);
+    }
+    async function loadTopLosers() { // Placeholder
+        displayTopGainersLosers(SAMPLE_DATA.stocks, false);
+    }
+
+    function displayTopGainersLosers(stockDataObj, isGainers) {
+        const containerId = isGainers ? 'topGainers' : 'topLosers';
+        const container = document.getElementById(containerId);
+        if (!stockDataObj) {
+            container.innerHTML = `<div class="loading"><div class="spinner"></div>Data unavailable.</div>`;
+            return;
+        }
+
+        const stocksArray = Object.entries(stockDataObj).map(([symbol, data]) => ({symbol, ...data}));
+        
+        const sortedStocks = stocksArray
+            .filter(s => typeof s.changePercent === 'number') // Chỉ lọc những mã có changePercent là số
+            .sort((a, b) => isGainers ? b.changePercent - a.changePercent : a.changePercent - b.changePercent)
+            .slice(0, 5);
+
+        if (sortedStocks.length === 0) {
+            container.innerHTML = `<div class="loading"><div class="spinner"></div>No ${isGainers ? "gainers" : "losers"} data.</div>`;
+            return;
+        }
+        
+        container.innerHTML = sortedStocks.map(stock => {
+            const changeClass = stock.changePercent >= 0 ? 'positive' : 'negative';
+            return `
+                <div class="trending-item" data-symbol="${stock.symbol}">
+                    <div class="trending-info">
+                        <div class="trending-symbol">${stock.symbol}</div>
+                        <div class="trending-name">${stock.name.substring(0,25)}${stock.name.length > 25 ? '...' : ''}</div>
+                    </div>
+                    <div class="trending-price">
+                        <div class="trending-value ${changeClass}">${formatPercent(stock.changePercent)}</div>
+                        <div class="trending-change" style="font-size:12px;">${formatPrice(stock.price)}</div>
+                    </div>
+                </div>
+            `
+        }).join('');
+        // Add event listeners for top gainers/losers items to update chart
+        container.querySelectorAll('.trending-item').forEach(item => {
+            item.addEventListener('click', () => {
+                const symbol = item.dataset.symbol;
+                AppState.selectedStock = symbol;
+                document.getElementById('selectedStock').textContent = symbol;
+                const activePeriodButton = document.querySelector('.chart-btn[data-period].active');
+                const period = activePeriodButton ? activePeriodButton.dataset.period : '1D';
+                loadChartData(symbol, period);
+                 showNotification(`Chart updated for ${symbol}`, 'info', 2000);
+            });
+        });
+    }
+
+
+    function initializeChart() {
+        const ctx = document.getElementById('priceChart').getContext('2d');
+        if (AppState.chart) {
+            AppState.chart.destroy();
+        }
+        AppState.chart = new Chart(ctx, {
+            type: 'line',
+            data: {
+                labels: [], // Sẽ được cập nhật bởi loadChartData
+                datasets: [{
+                    label: 'Price',
+                    data: [], // Sẽ được cập nhật
+                    borderColor: 'var(--primary-blue)',
+                    backgroundColor: 'rgba(55, 66, 250, 0.1)',
+                    borderWidth: 2,
+                    tension: 0.1,
+                    fill: true,
+                    pointRadius: 0, // Ẩn điểm dữ liệu
+                    pointHoverRadius: 5
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                scales: {
+                    x: {
+                        ticks: { color: 'var(--text-muted)' },
+                        grid: { color: 'var(--border-color)' }
+                    },
+                    y: {
+                        ticks: { color: 'var(--text-muted)', callback: value => '$' + value },
+                        grid: { color: 'var(--border-color)' }
+                    }
+                },
+                plugins: {
+                    legend: { display: false },
+                    tooltip: {
+                        mode: 'index',
+                        intersect: false,
+                        backgroundColor: 'var(--bg-tertiary)',
+                        titleFont: { weight: 'bold' },
+                        bodyFont: { family: "'Courier New', monospace" },
+                        callbacks: {
+                            label: function(context) {
+                                return `Price: ${formatPrice(context.parsed.y)}`;
+                            }
+                        }
+                    }
+                },
+                interaction: {
+                    mode: 'nearest',
+                    axis: 'x',
+                    intersect: false
+                }
+            }
+        });
+        // Tải dữ liệu biểu đồ cho cổ phiếu mặc định
+        loadChartData(AppState.selectedStock, '1D');
+    }
+
+    async function loadChartData(symbol, period = '1D') {
+        document.getElementById('selectedStock').textContent = symbol;
+        AppState.selectedStock = symbol; // Cập nhật lại state
+
+        const loadingIndicator = `<div class="loading" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%);"><div class="spinner"></div> Loading chart...</div>`;
+        const chartWrapper = document.querySelector('.chart-wrapper');
+        chartWrapper.insertAdjacentHTML('beforeend', loadingIndicator);
+
+
+        let apiFunction, interval, outputSize;
+        switch (period) {
+            case '1D':
+                apiFunction = 'TIME_SERIES_INTRADAY';
+                interval = '5min'; // Hoặc 1min, 15min, 30min, 60min (cẩn thận giới hạn API)
+                outputSize = 'compact'; // ~100 điểm dữ liệu
+                break;
+            case '5D':
+                apiFunction = 'TIME_SERIES_INTRADAY';
+                interval = '30min'; // Hoặc 60min
+                outputSize = 'full'; // Sẽ cần xử lý để chỉ lấy 5 ngày
+                break;
+            case '1M':
+                apiFunction = 'TIME_SERIES_DAILY_ADJUSTED';
+                outputSize = 'compact'; // Lấy khoảng 1 tháng (Alpha Vantage trả về 100 ngày)
+                break;
+            case '3M':
+            case '1Y':
+                apiFunction = 'TIME_SERIES_DAILY_ADJUSTED';
+                outputSize = 'full'; // Lấy dữ liệu dài hơn
+                break;
+            default:
+                apiFunction = 'TIME_SERIES_INTRADAY';
+                interval = '5min';
+                outputSize = 'compact';
+        }
+
+        let apiUrl = `${API_CONFIG.ALPHA_VANTAGE.baseUrl}?function=${apiFunction}&symbol=${symbol}&apikey=${API_CONFIG.ALPHA_VANTAGE.key}&outputsize=${outputSize}`;
+        if (apiFunction === 'TIME_SERIES_INTRADAY') {
+            apiUrl += `&interval=${interval}`;
+        }
+
+        try {
+            if (API_CONFIG.ALPHA_VANTAGE.key === 'YOUR_ALPHA_VANTAGE_API_KEY' || API_CONFIG.ALPHA_VANTAGE.key === 'demo') {
+                 throw new Error("Alpha Vantage API key is a placeholder. Cannot fetch chart data.");
+            }
+            const response = await fetch(apiUrl);
+            if (!response.ok) throw new Error(`API request failed: ${response.status}`);
+            const data = await response.json();
+
+            if (data['Error Message']) throw new Error(`API Error: ${data['Error Message']}`);
+            if (data['Note']) {
+                showNotification('Alpha Vantage API call limit likely reached for chart data. Try again later.', 'warning');
+                // throw new Error(`API Note: ${data['Note']}`);
+                 // Fallback to sample chart data if needed or just show message
+                updateChartWithSample(symbol, period); // Hàm này cần được tạo
+                return;
+            }
+            
+            let timeSeriesKey;
+            if (apiFunction === 'TIME_SERIES_INTRADAY') timeSeriesKey = `Time Series (${interval})`;
+            else if (apiFunction === 'TIME_SERIES_DAILY_ADJUSTED') timeSeriesKey = 'Time Series (Daily)';
+            
+            const timeSeries = data[timeSeriesKey];
+            if (!timeSeries) throw new Error('No time series data found in API response.');
+
+            const labels = [];
+            const prices = [];
+            const entries = Object.entries(timeSeries);
+
+            // Giới hạn số điểm dữ liệu tùy theo khoảng thời gian
+            let limit = entries.length;
+            if (period === '1D') limit = Math.min(limit, 78); // Khoảng 78 điểm cho 5 phút trong 1 ngày giao dịch (6.5 giờ)
+            else if (period === '5D') limit = Math.min(limit, 5 * 78); // Cần xử lý lấy dữ liệu nhiều ngày
+            else if (period === '1M') limit = Math.min(limit, 22); // Khoảng 22 ngày giao dịch
+            else if (period === '3M') limit = Math.min(limit, 66);
+            // 1Y và Full sẽ lấy nhiều hơn
+
+
+            for (let i = 0; i < Math.min(entries.length, limit) ; i++) {
+                const [dateTime, values] = entries[i];
+                labels.unshift(formatChartLabel(dateTime, period)); // Thêm vào đầu để biểu đồ từ trái sang phải (quá khứ -> hiện tại)
+                prices.unshift(parseFloat(values['4. close']));
+            }
+            
+            if (AppState.chart) {
+                AppState.chart.data.labels = labels;
+                AppState.chart.data.datasets[0].data = prices;
+                AppState.chart.data.datasets[0].label = `${symbol} Price`;
+                AppState.chart.update();
+            }
+
+        } catch (error) {
+            console.error('Failed to load chart data:', error);
+            showNotification(`Error loading chart for ${symbol}: ${error.message}`, 'error');
+            updateChartWithSample(symbol, period); // Hiển thị dữ liệu mẫu khi lỗi
+        } finally {
+            const loader = chartWrapper.querySelector('.loading');
+            if (loader) loader.remove();
+        }
+    }
+    
+    function updateChartWithSample(symbol, period) {
+        // Tạo dữ liệu mẫu đơn giản cho biểu đồ
+        const sampleLabels = [];
+        const samplePrices = [];
+        let basePrice = SAMPLE_DATA.stocks[symbol]?.price || 100;
+        let numPoints;
+
+        switch (period) {
+            case '1D': numPoints = 78; break;
+            case '5D': numPoints = 50; break; // Ít điểm hơn cho 5D sample
+            case '1M': numPoints = 22; break;
+            case '3M': numPoints = 66; break;
+            case '1Y': numPoints = 52; break; // 52 tuần
+            default: numPoints = 30;
+        }
+
+        for (let i = 0; i < numPoints; i++) {
+            sampleLabels.push(`T-${numPoints - 1 - i}`); // Nhãn đơn giản
+            samplePrices.push(basePrice + (Math.random() - 0.5) * (basePrice * 0.05)); // Biến động ngẫu nhiên 5%
+        }
+
+        if (AppState.chart) {
+            AppState.chart.data.labels = sampleLabels;
+            AppState.chart.data.datasets[0].data = samplePrices;
+            AppState.chart.data.datasets[0].label = `${symbol} (Sample) Price`;
+            AppState.chart.update();
+        }
+         showNotification(`Displaying sample chart data for ${symbol} (${period}).`, 'info', 3000);
+    }
+
+
+    function formatChartLabel(dateTimeString, period) {
+        const date = new Date(dateTimeString);
+        if (period === '1D' || period === '5D') { // Hiển thị giờ:phút cho intraday
+            return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        }
+        // Hiển thị ngày/tháng cho daily
+        return date.toLocaleDateString([], { day: '2-digit', month: 'short' });
+    }
+
+
+    function updateMarketTime() {
+        const now = new Date();
+        document.getElementById('marketTime').textContent = now.toLocaleTimeString('en-GB'); // HH:MM:SS
+        // Thêm logic kiểm tra thị trường mở/đóng cửa nếu cần
+    }
+    
+    function refreshStocks() {
+        showNotification('Refreshing stock data...', 'info', 2000);
+        loadStockData();
+    }
+
+    function showNotification(message, type = 'info', duration = 3000) {
+        const notification = document.getElementById('notification');
+        const messageDiv = document.getElementById('notificationMessage');
+        
+        messageDiv.textContent = message;
+        notification.className = 'notification show'; // Reset classes and add 'show'
+        if (type === 'success') {
+            notification.classList.add('success');
+        } else if (type === 'error') {
+            notification.classList.add('error');
+        } else {
+            // default to info, no specific class needed if styled that way
+        }
+
+        setTimeout(() => {
+            notification.classList.remove('show');
+        }, duration);
+    }
+
+</script>
+</body>
+</html>
